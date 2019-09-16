@@ -6,12 +6,31 @@ class visual_servo():
 		print("initializing serial port")
 		self.ser = serial.Serial(port = '/dev/ttyACM0', baudrate = 9600, timeout = 5)
 		print("serial port open!")
-		self.set_position(float(sys.argv[1]))
-		self.close()
 
-	def set_position(self, pos):
+		servo1 = servo(0, self.ser)
+		servo2 = servo(1, self.ser)
+
+		servo1.set_position(float(sys.argv[1]))
+		servo2.set_position(float(sys.argv[2]))
+
+		servo1.go_to_position()
+		servo2.go_to_position()
+
+	def close(self):
+		self.ser.close()
+
+class servo():
+	def __init__(self, number, ser):
+		self.motor_number = chr(number)
+		self.set_pos = chr(0x84)
+		self.ser = ser
+	
+	def set_position(self, position):
+		self.position = position
+
+	def go_to_position(self):
 		#turn pos from 0 - 100 to 1000-2000
-		ms = int(1000 + (pos/100.0 * 1000)) * 4
+		ms = int(1000 + (self.position/100.0 * 1000)) * 4
 		bin_ms = bin(ms)
 
 		low_bin = ms & 0b1111111
@@ -19,23 +38,9 @@ class visual_servo():
 
 		low_bits = chr(low_bin)
 		high_bits = chr(high_bin)
-
-		set_pos_command = chr(0x84)
-		pick_motor_command = chr(0x0)
-		self.ser.write(set_pos_command + pick_motor_command + low_bits + high_bits)
-
-
-
-
-
-	def close(self):
-		self.ser.close()
-
-
+		
+		self.ser.write(self.set_pos + self.motor_number + low_bits + high_bits)
 
 vis_serv = visual_servo()
 
-#
-
-#ser.close()
-#ser.open()
+vis_serv.close()
