@@ -12,8 +12,10 @@ class Camera():
 		self.camera_init()
 		self.mask_init()
 		self.servo_controller = visual_servo.visual_servo()
-		self.ball_pos_x = np.zeros(5)
-		self.ball_pos_y = np.zeros(5)
+		
+		self.ball_pos_index_size = 5
+		self.ball_pos_x = np.zeros(self.ball_pos_index_size)
+		self.ball_pos_y = np.zeros(self.ball_pos_index_size)
 		self.ball_pos_index = 0
 		self.servo_controller.servo2.set_speed(20)
 		self.servo_controller.servo1.set_speed(20)
@@ -70,12 +72,12 @@ class Camera():
 		if self.ball_pos_x[self.ball_pos_index] == 0:
 			self.ball_pos_x[self.ball_pos_index] = x
 			self.ball_pos_y[self.ball_pos_index] = y
-			self.ball_pos_index = (self.ball_pos_index + 1) % 5
+			self.ball_pos_index = (self.ball_pos_index + 1) % self.ball_pos_index_size
 			return (np.average(self.ball_pos_x[:self.ball_pos_index]), np.average(self.ball_pos_y[:self.ball_pos_index]) )
 		else:
 			self.ball_pos_x[self.ball_pos_index] = x
 			self.ball_pos_y[self.ball_pos_index] = y
-			self.ball_pos_index = (self.ball_pos_index + 1) % 5
+			self.ball_pos_index = (self.ball_pos_index + 1) % self.ball_pos_index_size
 			return (np.average(self.ball_pos_x), np.average(self.ball_pos_y))
 
 	#camera movement control function
