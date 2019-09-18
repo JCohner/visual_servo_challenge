@@ -55,11 +55,12 @@ class Camera():
 		self.servo_controller.servo1.set_speed(10)
 
 		if (frame_x_err > 5 or frame_x_err < -5):
-			mapped_error = frame_x_err/float(self.img_width) * 1000.0
-			print("current servo position: " + str(servo1_pos))
-			print("frame_x_err: " + str(frame_x_err))
-			print("mapped error: " + str(mapped_error))
-			self.servo_controller.servo1.go_to_position(servo1_pos + int(mapped_error))
+			mapped_error_x = frame_x_err/float(self.img_width) * 1000.0
+			self.servo_controller.servo1.go_to_position(servo1_pos + int(mapped_error_x))
+
+		if (frame_y_err > 5 or frame_y_err < -5):
+			mapped_error_y = frame_y_err/float(self.img_height) * 100.0
+			self.servo_controller.servo2.go_to_position(servo2_pos - int(mapped_error_y))
 
 
 
