@@ -29,8 +29,8 @@ class Camera():
 		self.line_type = 2
 
 	def mask_init(self):
-		self.lower_red = np.array([20, 100, 100])
-		self.upper_red = np.array([40, 255, 255])
+		self.lower_red = np.array([15, 20, 200])
+		self.upper_red = np.array([40, 155, 255])
 
 	def parse_args(self):
 		parser = argparse.ArgumentParser()
@@ -53,7 +53,7 @@ class Camera():
 		servo2_pos = self.servo_controller.servo2.get_position()
 
 		self.servo_controller.servo1.set_speed(10)
-
+		self.servo_controller.servo2.set_speed(10)
 		if (frame_x_err > 5 or frame_x_err < -5):
 			mapped_error_x = frame_x_err/float(self.img_width) * 1000.0
 			self.servo_controller.servo1.go_to_position(servo1_pos + int(mapped_error_x))
@@ -90,7 +90,7 @@ class Camera():
 		element = cv2.getStructuringElement(erosion_type, (2*erosion_size + 1, 2*erosion_size+1), (erosion_size, erosion_size))
 		frame = cv2.erode(frame, element)
 
-		frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 3)
+		#frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 3)
 		
 		#get largest contour
 		mid_x = None
