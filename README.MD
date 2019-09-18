@@ -1,7 +1,7 @@
 # Visual Servo Hackathon
 ### Josh Cohen MSR Sept 16-18
 
-<img src = "pictures/robot.jpg">
+<img src = "pictures/robot.xcf">
 
 The goal of this hackathon was to have a camera mounted on a two servo 'gimbal' that will track a ping pong ball held in space such that it centers the ball on its screen. The python open cv library was used along with the maestro servo controll board from Pololu.
 
