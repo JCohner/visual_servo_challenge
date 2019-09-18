@@ -3,34 +3,33 @@ import numpy as np
 import time
 import argparse
 import pdb
-from pprint import pprint
+import visual_servo
 #argument parsing
 
 class Camera():
 	def __init__(self):
-		run_state = self.parse_args()
+		#run_state = self.parse_args()
 		self.camera_init()
 		self.mask_init()
 
+		self.servo_controller = visual_servo.visual_servo()
 
-		if (run_state == 'save'):
-			self.camera_loop()
-		elif (run_state == 'play'):
-			print("implement this feauture yo")
+		self.camera_loop()
 
 	def camera_init(self):
 		self.cap = cv2.VideoCapture('/dev/video2')
 		camera_freq = self.cap.get(cv2.CAP_PROP_FPS)
 		self.img_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-		self.img_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))		
+		self.img_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+		self.img_center = (self.img_width/2, self.img_height/2)		
 
 		self.font = cv2.FONT_HERSHEY_SIMPLEX
 		self.bottom_left_corner = (10, 440)
-		self.font_color = (255,255,255)
+		self.font_color = (255,0,0)
 		self.line_type = 2
 
 	def mask_init(self):
-		self.lower_red = np.array([20, 100, 127])
+		self.lower_red = np.array([30, 100, 127])
 		self.upper_red = np.array([40, 255, 255])
 
 	def parse_args(self):
@@ -45,6 +44,14 @@ class Camera():
 			return 'save'
 		elif (args.play_recorded):
 			return 'play'
+
+	def move_camera_center(self, x,y):
+		frame_x_err = self.img_center[0] - x
+		frame_y_err = self.img_center[1] - y
+
+		servo1_pos = self.servo_controller.servo1.get_position()
+		servo2_pos = self.servo_controller.servo2.get_position()
+
 
 	def camera_loop(self):
 		while(True):
@@ -78,15 +85,22 @@ class Camera():
 			#get largest contour
 			if len(contours) != 0:
 				c = max(contours, key = cv2.contourArea)
-				x,y,w,h = cv2.boundingRect(c)
-				cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
-	    		mid_x = int(x + w/2)
-	    		mid_y = int(y + h/2)
+				#check if this is actually circularizing like we think it is
+				convex_hull = cv2.convexHull(c)
+				#cv2.drawContours(frame, convex_hull, -1, color = (255,0,0), thickness = 3)
+				x,y,w,h = cv2.boundingRect(convex_hull)
 
-	    		cv2.line(frame, (mid_x,0), (mid_x, self.img_height), (0,255,0), 2)
-	    		cv2.line(frame, (0,mid_y), (self.img_width, mid_y), (0,255,0), 2)
-	    		cv2.putText(frame, str((mid_x,mid_y)), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
+				if isinstance(x, int) and isinstance(y,int):
+					#print((x,y))
+					cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+		    		mid_x = int(x + w/2)
+		    		mid_y = int(y + h/2)
 
+		    		cv2.line(frame, (mid_x,0), (mid_x, self.img_height), (0,255,0), 2)
+		    		cv2.line(frame, (0,mid_y), (self.img_width, mid_y), (0,255,0), 2)
+		    		cv2.putText(frame, str((mid_x,mid_y)), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
+
+	    			self.move_camera_center(mid_x, mid_y)
 
 			# #erode to try further isolate noise
 			
@@ -108,3 +122,4 @@ class Camera():
 
 #calling it as its own main for now, will be invoked by servo or some other parent later
 cam = Camera()
+cam.servo_controller.close()
