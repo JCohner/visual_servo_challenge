@@ -49,8 +49,6 @@ class servo():
 		byte1 = ord(byte1)
 		byte2 = ord(byte2)
 
-
-
 		pos = (byte2 << 8) | byte1
 
 		return pos
