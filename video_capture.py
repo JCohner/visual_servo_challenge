@@ -11,27 +11,44 @@ class Camera():
 		#run_state = self.parse_args()
 		self.camera_init()
 		self.mask_init()
-
 		self.servo_controller = visual_servo.visual_servo()
+		self.ball_pos_x = np.zeros(5)
+		self.ball_pos_y = np.zeros(5)
+		self.ball_pos_index = 0
+		self.servo_controller.servo2.set_speed(20)
+		self.servo_controller.servo1.set_speed(20)
+		self.servo_controller.servo2.set_accel(0)
+		self.servo_controller.servo1.set_accel(0)
+
+		self.err_bound = 1
+		self.accel = 5
+		self.vel_x = 300
+		self.vel_y = 100		
 
 		self.camera_loop()
 
+	#initializes a few camera parameters
 	def camera_init(self):
 		self.cap = cv2.VideoCapture('/dev/video2')
 		camera_freq = self.cap.get(cv2.CAP_PROP_FPS)
 		self.img_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+		# print("width is " + str(self.img_width))
 		self.img_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+		# print("heigh is " + str(self.img_height))
 		self.img_center = (self.img_width/2, self.img_height/2)		
+		# print("center is at " + str(self.img_center))
 
 		self.font = cv2.FONT_HERSHEY_SIMPLEX
 		self.bottom_left_corner = (10, 440)
 		self.font_color = (255,0,0)
 		self.line_type = 2
 
+	#initializes mask upper and lower thresholds, used in frame processing
 	def mask_init(self):
-		self.lower_red = np.array([15, 20, 200])
+		self.lower_red = np.array([15, 20, 230])
 		self.upper_red = np.array([40, 155, 255])
 
+	#argument processor, currently not utilized
 	def parse_args(self):
 		parser = argparse.ArgumentParser()
 		group = parser.add_mutually_exclusive_group()
@@ -45,25 +62,42 @@ class Camera():
 		elif (args.play_recorded):
 			return 'play'
 
+	#this function will take the ball position and avergae it
+	def ball_tracker(self, pos):
+		#going to attempt to moving average over 5 frames
+		x = pos[0]
+		y = pos[1]
+		if self.ball_pos_x[self.ball_pos_index] == 0:
+			self.ball_pos_x[self.ball_pos_index] = x
+			self.ball_pos_y[self.ball_pos_index] = y
+			self.ball_pos_index = (self.ball_pos_index + 1) % 5
+			return (np.average(self.ball_pos_x[:self.ball_pos_index]), np.average(self.ball_pos_y[:self.ball_pos_index]) )
+		else:
+			self.ball_pos_x[self.ball_pos_index] = x
+			self.ball_pos_y[self.ball_pos_index] = y
+			self.ball_pos_index = (self.ball_pos_index + 1) % 5
+			return (np.average(self.ball_pos_x), np.average(self.ball_pos_y))
+
+	#camera movement control function
 	def move_camera_center(self, pos):
 		frame_x_err = -1 * (self.img_center[0] - pos[0])
-		frame_y_err = self.img_center[1] - pos[1]
+		frame_y_err = -1 * (self.img_center[1] - pos[1])
 
 		servo1_pos = self.servo_controller.servo1.get_position()
 		servo2_pos = self.servo_controller.servo2.get_position()
 
-		self.servo_controller.servo1.set_speed(10)
-		self.servo_controller.servo2.set_speed(10)
-		if (frame_x_err > 5 or frame_x_err < -5):
-			mapped_error_x = frame_x_err/float(self.img_width) * 1000.0
-			self.servo_controller.servo1.go_to_position(servo1_pos + int(mapped_error_x))
+		if (frame_x_err > self.err_bound or frame_x_err < -(self.err_bound)):
+			norm_error_x = frame_x_err/float(self.img_width/2)
+			cub_of_norm = np.power(norm_error_x, 3)	
+			self.servo_controller.servo1.go_to_position(servo1_pos + int(cub_of_norm * self.vel_x))
 
-		if (frame_y_err > 5 or frame_y_err < -5):
-			mapped_error_y = frame_y_err/float(self.img_height) * 100.0
-			self.servo_controller.servo2.go_to_position(servo2_pos - int(mapped_error_y))
+		if (frame_y_err > self.err_bound or frame_y_err < -(self.err_bound)):
+			norm_error_y = frame_y_err/float(self.img_height/2)
+			cub_of_norm = np.power(norm_error_y, 3)
+			self.servo_controller.servo2.go_to_position(servo2_pos + int(cub_of_norm * self.vel_y))
 
 
-
+	#captures and processes frame
 	def frame_read(self):
 		loop_time = time.time()
 		#pdb.set_trace()
@@ -90,7 +124,7 @@ class Camera():
 		element = cv2.getStructuringElement(erosion_type, (2*erosion_size + 1, 2*erosion_size+1), (erosion_size, erosion_size))
 		frame = cv2.erode(frame, element)
 
-		#frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 3)
+		#frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 1)
 		
 		#get largest contour
 		mid_x = None
@@ -111,15 +145,19 @@ class Camera():
 	    		cv2.line(frame, (mid_x,0), (mid_x, self.img_height), (0,255,0), 2)
 	    		cv2.line(frame, (0,mid_y), (self.img_width, mid_y), (0,255,0), 2)
 	    		cv2.putText(frame, str((mid_x,mid_y)), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
+	    	else:
+	    		self.state = 'searching'
 		cv2.imshow('frame', frame)
 		return (mid_x, mid_y)
 
+	#main loop of application
 	def camera_loop(self):
 		while(True):
 			ball_pos = self.frame_read()
-			print(ball_pos)
+			
 			if ball_pos != (None, None):
-				self.move_camera_center(ball_pos)
+				ave_pos = self.ball_tracker(ball_pos)
+				self.move_camera_center(ave_pos)
 
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
