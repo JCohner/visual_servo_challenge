@@ -1,6 +1,6 @@
 import serial
 import sys 
-import video_capture
+
 
 class visual_servo():
 	def __init__(self):
@@ -21,8 +21,11 @@ class servo():
 
 	def go_to_position(self, position):
 		#turn pos from 0 - 100 to 1000-2000
-		ms = int(1000 + (position/100.0 * 1000)) * 4
-		print(ms)
+		#ms = int(1000 + (position/100.0 * 1000)) * 4
+		#we are actually going to use the position specified by us/4
+		ms = position
+
+		#print(ms)
 
 		set_pos = chr(0x84)
 
@@ -42,7 +45,7 @@ class servo():
 		byte1 = self.ser.read(1)
 		byte2 = self.ser.read(1)
 
-		print((byte1,byte2))
+		# print((byte1,byte2))
 		byte1 = ord(byte1)
 		byte2 = ord(byte2)
 
@@ -51,4 +54,16 @@ class servo():
 		pos = (byte2 << 8) | byte1
 
 		return pos
+
+	def set_speed(self, speed):
+		set_speed = chr(0x87)
+		speed = int(speed) #in 0.25us/10ms
+
+		low_bin = speed & 0b1111111
+		high_bin = (speed & 0b11111110000000) >> 7
+
+		low_bits = chr(low_bin)
+		high_bits = chr(high_bin)
+
+		self.ser.write(set_speed + self.motor_number + low_bits + high_bits)
 
