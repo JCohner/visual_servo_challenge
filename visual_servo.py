@@ -25,8 +25,6 @@ class servo():
 		#we are actually going to use the position specified by us/4
 		ms = position
 
-		#print(ms)
-
 		set_pos = chr(0x84)
 
 		low_bin = ms & 0b1111111
@@ -64,4 +62,17 @@ class servo():
 		high_bits = chr(high_bin)
 
 		self.ser.write(set_speed + self.motor_number + low_bits + high_bits)
+
+	def set_accel(self, accel):
+		set_accel = chr(0x89)
+		accel = int(accel) #0.25us/10ms/80ms
+
+		low_bin = accel & 0b1111111
+		high_bin = (accel & 0b11111110000000) >> 7
+
+		low_bits = chr(low_bin)
+		high_bits = chr(high_bin)
+
+		self.ser.write(set_accel + self.motor_number + low_bits + high_bits)
+
 
