@@ -21,8 +21,8 @@ class Camera():
 	def camera_init(self):
 		self.cap = cv2.VideoCapture('/dev/video2')
 		camera_freq = self.cap.get(cv2.CAP_PROP_FPS)
-		self.img_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-		self.img_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)		
+		self.img_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+		self.img_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))		
 
 		self.font = cv2.FONT_HERSHEY_SIMPLEX
 		self.bottom_left_corner = (10, 440)
@@ -62,30 +62,43 @@ class Camera():
 			#combine to get single channel gray scale
 			thresh = cv2.bitwise_or(s, v)
 			#binary threshold the image
-			ret,thresh = cv2.threshold(thresh, 200, 255, 0)
+			ret,thresh = cv2.threshold(thresh, 127, 255, 0)
 			#find the edges of the binary image
 			im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
-			contours = np.array(contours)
-			frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 3)
-			
-			#erode to try further isolate noise
+
+			frame = cv2.GaussianBlur(frame, (5,5), 0)
+
 			erosion_size = 5
 			erosion_type = cv2.MORPH_ELLIPSE 
 			element = cv2.getStructuringElement(erosion_type, (2*erosion_size + 1, 2*erosion_size+1), (erosion_size, erosion_size))
-			eroded = cv2.erode(frame, element)
+			frame = cv2.erode(frame, element)
 
-			#blur image to low_pass filter
-			blur = cv2.GaussianBlur(frame, (11,11), 0)
-			#print(contours)
-			# hull = cv2.convexHull(contours[0])
+			frame = cv2.drawContours(frame, contours, -1, color = (255,0,0), thickness = 3)
+			
+			#get largest contour
+			if len(contours) != 0:
+				c = max(contours, key = cv2.contourArea)
+				x,y,w,h = cv2.boundingRect(c)
+				cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+	    		mid_x = int(x + w/2)
+	    		mid_y = int(y + h/2)
 
-			# frame = cv2.drawContours(frame, hull, -1, color = (0,255,0), thickness = 3)
+	    		cv2.line(frame, (mid_x,0), (mid_x, self.img_height), (0,255,0), 2)
+	    		cv2.line(frame, (0,mid_y), (self.img_width, mid_y), (0,255,0), 2)
+	    		cv2.putText(frame, str((mid_x,mid_y)), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
 
-			#get convex 
-			loop_time = time.time() - loop_time
-			cv2.putText(blur, str(1/loop_time), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
 
-			cv2.imshow('frame', blur)
+			# #erode to try further isolate noise
+			
+
+			# #blur image to low_pass filter
+			# blur = cv2.GaussianBlur(frame, (11,11), 0)
+
+			# #get convex 
+			# loop_time = time.time() - loop_time
+			# cv2.putText(blur, str(1/loop_time), self.bottom_left_corner, self.font, 1, self.font_color, self.line_type)
+
+			cv2.imshow('frame', frame)
 
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
